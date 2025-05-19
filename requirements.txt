@@ -1,0 +1,14 @@
+huggingface_hub
+accelerate
+insightface 
+onnxruntime-gpu 
+facexlib
+segment-anything 
+dill
+qwen-vl-utils 
+qwen-vl-utils[decord]
+
+# for gemini nodes
+google-generativeai>=0.3.2
+google-genai
+requests>=2.31.0
