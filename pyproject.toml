@@ -1,0 +1,15 @@
+[project]
+name = "AQnodes"
+description = "Nodes for ComfyUI, mostly for llm calling and automatizing pulid multiface."
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["google-generativeai>=0.3.2", "google-genai", "requests>=2.31.0", "dill", "segment-anything", "facexlib", "qwen-vl-utils ", "onnxruntime-gpu ", "insightface", "accelerate", "huggingface_hub"]
+
+[project.urls]
+Repository = "https://github.com/2frames/ComfyUI-AQnodes"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "2frames.app"
+DisplayName = "AQnodes"
+Icon = ""
