@@ -21,12 +21,16 @@ class AQ_SendImageToAPI:
                 "api_endpoint": ("STRING", {"default": "https://yourapiendpoint.com/upload"}),
                 "api_key": ("STRING", {"default": "YOUR_API_KEY"}),
                 "batch_size": ("INT", {"default": 10, "min": 1, "max": 100}),
-                "compression_level": ("INT", {"default": 6, "min": 0, "max": 9}),
                 "image_format": (["PNG", "JPEG", "WEBP", "AVIF"], {"default": "PNG"}),
-                "jpeg_quality": ("INT", {"default": 85, "min": 1, "max": 100}),
+                "quality": ("INT", {"default": 85, "min": 1, "max": 100}),
             },
             "optional": {
-                "output_previews": ("BOOLEAN", {"default": True}),
+                "image_name_prefix": ("STRING", {"default": "image"}),
+                "jobId": ("STRING", {"default": ""}),
+                "userId": ("STRING", {"default": ""}),
+                "compression_level": ("INT", {"default": 6, "min": 0, "max": 9}),
+                "send_gzipped": ("BOOLEAN", {"default": True}),
+                "show_progress_logs": ("BOOLEAN", {"default": True}),
             }
         }
 
@@ -36,7 +40,9 @@ class AQ_SendImageToAPI:
     OUTPUT_NODE = True
     CATEGORY = "Aquasite/API"
 
-    def send_images_to_api(self, images, api_endpoint, api_key, batch_size, compression_level, image_format, jpeg_quality, output_previews=True):
+    def send_images_to_api(self, images, api_endpoint, api_key, batch_size, image_format, quality, 
+                          image_name_prefix="image", jobId="", userId="", compression_level=6, 
+                          send_gzipped=True, show_progress_logs=True):
         instruction_string = """
         **AQ_SendImageToAPI Node Instructions**
 
@@ -49,15 +55,19 @@ class AQ_SendImageToAPI:
         - api_endpoint (URL): The server API endpoint where images will be sent.
         - api_key (String): The authorization key for API access.
         - batch_size (Int): Number of images to send in each batch (1-100).
-        - compression_level (Int): Gzip compression level for image data (0-9).
         - image_format (String): Format for the image ('PNG', 'JPEG', 'WEBP', 'AVIF').
-        - jpeg_quality (Int): Quality for JPEG/WEBP/AVIF formats (1-100).
-        - output_previews (Boolean): Whether to print a summary message to the console.
+        - quality (Int): Quality for JPEG/WEBP/AVIF formats (1-100).
+        - image_name_prefix (String): Optional prefix for image filenames (conceptual).
+        - jobId (String): Optional Job ID to associate with these images on the server (conceptual).
+        - userId (String): Optional User ID to associate with these images on the server (conceptual).
+        - compression_level (Int): Gzip compression level for image data (0-9).
+        - send_gzipped (Boolean): Data is currently always gzipped; `compression_level` controls the degree.
+        - show_progress_logs (Boolean): Whether to print a summary message to the console.
 
         (Note: The following parameters are described for completeness but are not all currently active inputs in this version of the node: `image_name_prefix`, `jobId`, `userId`, `send_gzipped` as a direct boolean toggle for gzip.)
 
         - image_name_prefix (String): Optional prefix for image filenames (conceptual).
-        - quality (Int): Corresponds to `jpeg_quality` for WEBP/JPG/AVIF.
+        - quality (Int): Corresponds to `quality` for WEBP/JPG/AVIF.
         - jobId (String): Optional Job ID to associate with these images on the server (conceptual).
         - userId (String): Optional User ID to associate with these images on the server (conceptual).
         - send_gzipped (Boolean): Data is currently always gzipped; `compression_level` controls the degree.
@@ -70,7 +80,7 @@ class AQ_SendImageToAPI:
         - instruction (String): This instructional text.
         - result (String): A string detailing the outcome of the last API call attempt.
         """
-        if not images:
+        if images is None or len(images) == 0:
             return (instruction_string, "No images to process.",)
 
         results = [] # This stores the JSON responses from the API for each batch
@@ -89,54 +99,53 @@ class AQ_SendImageToAPI:
             batch_payload = []
 
             for image_tensor in batch_images:
-                # Convert tensor to PIL Image
-                image_np = image_tensor.cpu().numpy()  # Change to float32 or uint8 if needed
-                if image_np.min() < 0 or image_np.max() > 1: # if not in [0,1] range
-                    image_np = (image_np - image_np.min()) / (image_np.max() - image_np.min()) # normalize
-                
-                if image_np.ndim == 3 and image_np.shape[0] in [1, 3, 4]: # HWC for grayscale, RGB, RGBA
-                    image_np = image_np.transpose(1, 2, 0) # CHW to HWC
-                
-                image_np = (image_np * 255).astype(np.uint8)
-                pil_image = Image.fromarray(image_np)
+                # Convert tensor to PIL Image using the working approach
+                array = 255.0 * image_tensor.cpu().numpy().squeeze()
+                pil_image = Image.fromarray(np.clip(array, 0, 255).astype(np.uint8))
 
                 # Convert image to specified format and compress
                 img_byte_arr = io.BytesIO()
                 save_params = {}
+                
                 if image_format == "JPEG":
-                    save_params['quality'] = jpeg_quality
-                    pil_image.save(img_byte_arr, format='JPEG', **save_params)
+                    pil_image.save(img_byte_arr, format="JPEG", quality=quality)
                 elif image_format == "WEBP":
-                    save_params['quality'] = jpeg_quality # webp also uses quality
-                    pil_image.save(img_byte_arr, format='WEBP', **save_params)
+                    pil_image.save(img_byte_arr, format="WEBP", quality=quality)
                 elif image_format == "AVIF":
-                    save_params['quality'] = jpeg_quality # avif also uses quality
-                    # AVIF might require specific saving parameters, ensure pillow_avif is correctly used
-                    pil_image.save(img_byte_arr, format='AVIF', **save_params)
-                else: # Default to PNG
-                    pil_image.save(img_byte_arr, format='PNG')
+                    pil_image.save(img_byte_arr, format="AVIF", quality=quality)
+                else:  # Default to PNG
+                    pil_image.save(img_byte_arr, format="PNG")
                 
-                img_byte_arr = img_byte_arr.getvalue()
-
-                # Compress with gzip
-                compressed_data = gzip.compress(img_byte_arr, compresslevel=compression_level)
+                image_data = img_byte_arr.getvalue()
                 
-                # Encode to base64
-                encoded_data = base64.b64encode(compressed_data).decode('utf-8')
-                batch_payload.append({"image_data": encoded_data, "format": image_format.lower()})
+                # Compress with gzip and encode if requested
+                if send_gzipped:
+                    compressed_data = gzip.compress(image_data, compresslevel=compression_level)
+                    encoded_data = base64.b64encode(compressed_data).decode('utf-8')
+                else:
+                    encoded_data = base64.b64encode(image_data).decode('utf-8')
+                
+                batch_payload.append({
+                    "image_name": f"{image_name_prefix}_{processed_images_count}.{image_format.lower()}",
+                    "image_data": encoded_data,
+                    "is_gzipped": send_gzipped
+                })
 
             if not batch_payload:
                 continue
 
             headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "Content-Encoding": "gzip" # Inform server that payload is gzipped
+                "Content-Type": "application/json"
             }
             
             result_string_for_batch = "No API call attempted for this batch." # Initialize for current batch
             try:
-                json_payload = {"images": batch_payload}
+                json_payload = {
+                    "images": batch_payload,
+                    "jobId": jobId if jobId else None,
+                    "userId": userId if userId else None
+                }
                 response = requests.post(api_endpoint, json=json_payload, headers=headers)
                 response.raise_for_status()
                 
@@ -162,7 +171,7 @@ class AQ_SendImageToAPI:
                 self.update_node_status(client_id, total_images, processed_images_count, successful_uploads, failed_uploads)
         
         final_summary_message = f"Overall Processed: {processed_images_count}/{total_images} images. Successful Uploads: {successful_uploads}, Failed Uploads: {failed_uploads}."
-        if output_previews:
+        if show_progress_logs:
             print(final_summary_message) 
 
         # Final status update to UI, if client_id is available
@@ -191,19 +200,3 @@ class AQ_SendImageToAPI:
             # PromptServer.instance.send_sync("custom_event_name", {"successful": successful_uploads, "failed": failed_uploads, "sid": client_id}, client_id)
         
         logging.info(f"Progress (client {client_id}): {processed_count}/{total_images} images. Successful: {successful_uploads}, Failed: {failed_uploads}.")
-
-if __name__ == "__main__":
-    # This section is for testing outside of ComfyUI if needed.
-    # Example:
-    # sender = AQ_SendImageToAPI()
-    # Create some dummy image tensors (e.g., 1xHxWx3)
-    # dummy_image = torch.rand(1, 64, 64, 3) 
-    # result = sender.send_images_to_api(images=[dummy_image, dummy_image], 
-    #                                   api_endpoint="YOUR_TEST_ENDPOINT", 
-    #                                   api_key="YOUR_TEST_KEY",
-    #                                   batch_size=1,
-    #                                   compression_level=6,
-    #                                   image_format="PNG",
-    #                                   jpeg_quality=85)
-    # print(result)
-    pass

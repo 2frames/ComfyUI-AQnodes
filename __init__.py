@@ -20,7 +20,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AQ_Qwen": "AQ_Qwen",
     "AQ_QwenLoader": "AQ_QwenLoader",
     "AQ_Gemini": "AQ_Gemini",
-    "AQ_SendImageToAPI": "Aquasite Send Image to API"
+    "AQ_SendImageToAPI": "AQ_SendImageToAPI"
 }
 
 
