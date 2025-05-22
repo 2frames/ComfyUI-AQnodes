@@ -5,6 +5,7 @@ onnxruntime-gpu
 facexlib
 segment-anything 
 dill
+pillow-avif
 qwen-vl-utils 
 qwen-vl-utils[decord]
 
