@@ -11,6 +11,8 @@ from .nodes.blend.AQ_BlendImages import AQ_BlendImages
 from .nodes.image.AQ_Image import AQ_LoadImageBase64, AQ_Image_Pad, AQ_Image_DetailTransfer, AQ_ImageMaskSwitch
 from .nodes.save.AQ_SaveImageWebpReturnBase64 import AQ_SaveImageWebpReturnBase64
 from .nodes.filters.AQ_filters import AQ_BatchAverageImage, AQ_ColorMatchImage
+from .nodes.text_encoders.AQ_TextEncodeQwenImage import AQ_TextEncodeQwenImageEdit
+from .nodes.text_encoders.AQ_TextEncodeQwenImage import AQ_TextEncodeQwenImageEditPlus
 
 NODE_CLASS_MAPPINGS = {
     "AQ_MasksAndImagesAsList": AQ_MasksAndImagesAsList,
@@ -29,7 +31,9 @@ NODE_CLASS_MAPPINGS = {
     "AQ_ImageMaskSwitch": AQ_ImageMaskSwitch,
     "AQ_SaveImageWebpReturnBase64": AQ_SaveImageWebpReturnBase64,
     "AQ_BatchAverageImage": AQ_BatchAverageImage,
-    "AQ_ColorMatchImage": AQ_ColorMatchImage
+    "AQ_ColorMatchImage": AQ_ColorMatchImage,
+    "AQ_TextEncodeQwenImageEdit": AQ_TextEncodeQwenImageEdit,
+    "AQ_TextEncodeQwenImageEditPlus": AQ_TextEncodeQwenImageEditPlus
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -49,7 +53,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AQ_ImageMaskSwitch": "AQ_ImageMaskSwitch",
     "AQ_SaveImageWebpReturnBase64": "AQ_SaveImageWebpReturnBase64",
     "AQ_BatchAverageImage": "AQ_BatchAverageImage",
-    "AQ_ColorMatchImage": "AQ_ColorMatchImage"  
+    "AQ_ColorMatchImage": "AQ_ColorMatchImage",
+    "AQ_TextEncodeQwenImageEdit": "AQ_TextEncodeQwenImageEdit",
+    "AQ_TextEncodeQwenImageEditPlus": "AQ_TextEncodeQwenImageEditPlus"
+
 }
 
 
