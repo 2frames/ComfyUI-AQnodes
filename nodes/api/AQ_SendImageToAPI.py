@@ -23,6 +23,7 @@ class AQ_SendImageToAPI:
                 "batch_size": ("INT", {"default": 10, "min": 1, "max": 100}),
                 "image_format": (["PNG", "JPEG", "WEBP", "AVIF"], {"default": "PNG"}),
                 "quality": ("INT", {"default": 85, "min": 1, "max": 100}),
+                "verify_ssl": ("BOOLEAN", {"default": True}),
             },
             "optional": {
                 "image_name_prefix": ("STRING", {"default": "image"}),
@@ -42,7 +43,7 @@ class AQ_SendImageToAPI:
 
     def send_images_to_api(self, images, api_endpoint, api_key, batch_size, image_format, quality, 
                           image_name_prefix="image", jobId="", userId="", compression_level=6, 
-                          send_gzipped=True, show_progress_logs=True):
+                          send_gzipped=True, show_progress_logs=True, verify_ssl=True):
         instruction_string = """
         **AQ_SendImageToAPI Node Instructions**
 
@@ -146,7 +147,7 @@ class AQ_SendImageToAPI:
                     "jobId": jobId if jobId else None,
                     "userId": userId if userId else None
                 }
-                response = requests.post(api_endpoint, json=json_payload, headers=headers)
+                response = requests.post(api_endpoint, json=json_payload, headers=headers, verify=verify_ssl)
                 response.raise_for_status()
                 
                 # Successfully got a response
