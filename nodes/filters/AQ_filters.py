@@ -88,10 +88,7 @@ class AQ_ColorMatchImage:
         return (t,)
 # guided filter a tensor image batch in format [B x H x W x C] on H/W (spatial, per-image, per-channel)
 def guided_filter_tensor(ref, images, d, s):
-    try:
-        from cv2.ximgproc import guidedFilter
-    except ImportError:
-        print("\033[33mUnable to import guidedFilter, make sure you have only opencv-contrib-python or run the import_error_install.bat script\033[m")
+    from cv2.ximgproc import guidedFilter
 
     if d > 100:
         np_img = (
