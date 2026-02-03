@@ -300,7 +300,6 @@ class AQ_Gemini_acstep15:
                 "prompt": ("STRING", {"default": "", "multiline": True}),
                 "system_message": ("STRING", {"default": "You are a helpful assistant.", "multiline": True}),
                 "temperature": ("FLOAT", {"default": 1, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "top_k": ("INT", {"default": 64, "min": 0, "max": 100}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
             },
             "optional": {
@@ -314,9 +313,9 @@ class AQ_Gemini_acstep15:
         "STRING",
         "INT",
         "FLOAT",
-        "STRING",
-        "STRING",
-        "STRING",
+        "COMBO",
+        "COMBO",
+        "COMBO",
     )
     RETURN_NAMES = (
         "response_json",
@@ -331,8 +330,7 @@ class AQ_Gemini_acstep15:
     FUNCTION = "generate"
     CATEGORY = "Aquasite/LLM"
 
-    def generate(self, gemini_api_key, model_selection, custom_model, prompt, system_message, temperature=0.8,
-                top_k=64, top_p=0.95, image=None):
+    def generate(self, gemini_api_key, model_selection, custom_model, prompt, system_message, temperature=0.8, top_p=0.95, image=None):
         if not gemini_api_key:
             return ("", "", "", 120, 120.0, "4", "en", "C major")
 
@@ -370,13 +368,7 @@ class AQ_Gemini_acstep15:
             model_name = custom_model if model_selection == "custom" and custom_model else model_selection
 
             contents = []
-            if system_message:
-                contents.append(
-                    types.Content(
-                        role="user",
-                        parts=[types.Part.from_text(text=system_message)]
-                    )
-                )
+       
 
             combined_prompt = f"{prompt}\n\n{json_instruction}".strip()
 
@@ -423,9 +415,12 @@ class AQ_Gemini_acstep15:
 
             generate_config = types.GenerateContentConfig(
                 temperature=temperature,
-                top_k=top_k,
-                top_p=top_p
+                top_p=top_p,
             )
+
+            if system_message:
+                generate_config.system_instruction = [types.Part.from_text(text=system_message)]
+               
 
             # Use schema-based JSON when supported; otherwise rely on the instruction.
             is_gemma_model = model_name.startswith("gemma-3")
