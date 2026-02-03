@@ -273,4 +273,255 @@ Note: If any error occurs, empty strings will be returned instead of raising an 
             return False, text
         except Exception as e:
             print(f"Unexpected error while parsing JSON: {str(e)}")
-            return False, text 
+            return False, text
+
+
+class AQ_Gemini_acstep15:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "gemini_api_key": ("STRING", {"default": ""}),
+                "model_selection": ([
+                    "gemma-3-12b-it",  # default
+                    "gemma-3-1b-it",
+                    "gemma-3-4b-it",
+                    "gemma-3-27b-it",
+                    "gemini-flash-latest",
+                    "gemini-flash-lite-latest",
+                    "gemini-2.5-flash",
+                    "gemini-2.5-flash-lite",
+                    "gemini-2.5-pro",
+                    "gemini-3-flash-preview",
+                    "gemini-3-pro-preview",
+                    "custom"  # Option for custom model
+                ], {"default": "gemma-3-12b-it"}),
+                "custom_model": ("STRING", {"default": "", "multiline": False}),
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "system_message": ("STRING", {"default": "You are a helpful assistant.", "multiline": True}),
+                "temperature": ("FLOAT", {"default": 1, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "top_k": ("INT", {"default": 64, "min": 0, "max": 100}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+            }
+        }
+
+    RETURN_TYPES = (
+        "STRING",
+        "STRING",
+        "STRING",
+        "INT",
+        "FLOAT",
+        "STRING",
+        "STRING",
+        "STRING",
+    )
+    RETURN_NAMES = (
+        "response_json",
+        "tags",
+        "lyrics",
+        "bpm",
+        "duration",
+        "timesignature",
+        "language",
+        "keyscale",
+    )
+    FUNCTION = "generate"
+    CATEGORY = "Aquasite/LLM"
+
+    def generate(self, gemini_api_key, model_selection, custom_model, prompt, system_message, temperature=0.8,
+                top_k=64, top_p=0.95, image=None):
+        if not gemini_api_key:
+            return ("", "", "", 120, 120.0, "4", "en", "C major")
+
+        json_schema = {
+            "type": "object",
+            "required": [
+                "description",
+                "tags",
+                "lyrics",
+                "bpm",
+                "keyscale",
+                "durationSeconds",
+                "timesignature",
+                "language"
+            ],
+            "properties": {
+                "description": {"type": "string"},
+                "tags": {"type": "string"},
+                "lyrics": {"type": "string"},
+                "bpm": {"type": "integer"},
+                "keyscale": {"type": "string"},
+                "durationSeconds": {"type": "number"},
+                "timesignature": {"type": "string"},
+                "language": {"type": "string"}
+            }
+        }
+
+        json_instruction = (
+            "Return ONLY valid JSON matching this schema (no markdown, no comments): "
+            f"{json.dumps(json_schema)}"
+        )
+
+        try:
+            client = genai.Client(api_key=gemini_api_key)
+            model_name = custom_model if model_selection == "custom" and custom_model else model_selection
+
+            contents = []
+            if system_message:
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part.from_text(text=system_message)]
+                    )
+                )
+
+            combined_prompt = f"{prompt}\n\n{json_instruction}".strip()
+
+            if image is not None:
+                if isinstance(image, torch.Tensor):
+                    image = image.cpu().numpy()
+
+                if len(image.shape) == 4:
+                    image = image[0]
+
+                if image.dtype != np.uint8:
+                    if image.max() <= 1:
+                        image = (image * 255).astype(np.uint8)
+                    else:
+                        image = image.astype(np.uint8)
+
+                img = Image.fromarray(image)
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format="PNG")
+                img_byte_arr.seek(0)
+                img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[{
+                            "inline_data": {
+                                "mime_type": "image/png",
+                                "data": img_base64
+                            }
+                        },
+                        {
+                            "text": combined_prompt
+                        }]
+                    )
+                )
+            else:
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part.from_text(text=combined_prompt)]
+                    )
+                )
+
+            generate_config = types.GenerateContentConfig(
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p
+            )
+
+            # Use schema-based JSON when supported; otherwise rely on the instruction.
+            is_gemma_model = model_name.startswith("gemma-3")
+            if not is_gemma_model:
+                generate_config.response_mime_type = "application/json"
+                generate_config.response_schema = self._convert_schema_dict_to_genai(json_schema)
+
+            response = ""
+            for chunk in client.models.generate_content_stream(
+                model=model_name,
+                contents=contents,
+                config=generate_config,
+            ):
+                if chunk.text:
+                    response += chunk.text
+
+            success, json_response = self.try_parse_json(response)
+            if not success or not isinstance(json_response, dict):
+                json_response = {}
+
+            tags = json_response.get("tags") or json_response.get("description") or ""
+            lyrics = json_response.get("lyrics", "")
+            bpm = self._coerce_int(json_response.get("bpm"), default=120)
+            duration = self._coerce_float(json_response.get("durationSeconds"), default=120.0)
+            timesignature = str(json_response.get("timesignature", "4"))
+            language = str(json_response.get("language", "en"))
+            keyscale = str(json_response.get("keyscale", "C major"))
+
+            response_json = json.dumps({
+                "description": json_response.get("description", ""),
+                "tags": tags,
+                "lyrics": lyrics,
+                "bpm": bpm,
+                "keyscale": keyscale,
+                "durationSeconds": duration,
+                "timesignature": timesignature,
+                "language": language
+            })
+
+            return (response_json, tags, lyrics, bpm, duration, timesignature, language, keyscale)
+        except Exception as e:
+            print(f"Error in Gemini API: {str(e)}")
+            return ("", "", "", 0, 120, 120.0, "4", "en", "C major")
+
+    def _convert_schema_dict_to_genai(self, schema_dict):
+        schema_type = schema_dict.get("type", "object")
+
+        if schema_type == "object":
+            properties = {}
+            for prop_name, prop_schema in schema_dict.get("properties", {}).items():
+                properties[prop_name] = self._convert_schema_dict_to_genai(prop_schema)
+
+            return genai.types.Schema(
+                type=genai.types.Type.OBJECT,
+                required=schema_dict.get("required", []),
+                properties=properties
+            )
+        if schema_type == "array":
+            items_schema = self._convert_schema_dict_to_genai(schema_dict.get("items", {}))
+            return genai.types.Schema(
+                type=genai.types.Type.ARRAY,
+                items=items_schema
+            )
+        if schema_type == "string":
+            return genai.types.Schema(type=genai.types.Type.STRING)
+        if schema_type == "number":
+            return genai.types.Schema(type=genai.types.Type.NUMBER)
+        if schema_type == "integer":
+            return genai.types.Schema(type=genai.types.Type.INTEGER)
+        if schema_type == "boolean":
+            return genai.types.Schema(type=genai.types.Type.BOOLEAN)
+        return genai.types.Schema(type=genai.types.Type.STRING)
+
+    def prepare_json(self, text):
+        text = text.replace("```json", "").replace("```", "").strip()
+        return text
+
+    def try_parse_json(self, text):
+        try:
+            cleaned_text = self.prepare_json(text)
+            return True, json.loads(cleaned_text)
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {str(e)}")
+            return False, text
+        except Exception as e:
+            print(f"Unexpected error while parsing JSON: {str(e)}")
+            return False, text
+
+    def _coerce_int(self, value, default=0):
+        try:
+            return int(value)
+        except Exception:
+            return default
+
+    def _coerce_float(self, value, default=0.0):
+        try:
+            return float(value)
+        except Exception:
+            return default
