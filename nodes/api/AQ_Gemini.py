@@ -530,3 +530,259 @@ class AQ_Gemini_acstep15:
             return float(value)
         except Exception:
             return default
+
+
+class AQ_OpenAI_acstep15:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "openai_api_key": ("STRING", {"default": ""}),
+                "model": ([
+                    "gpt-5.2",
+                    "gpt-5-nano",
+                    "gpt-5-mini",
+                    "gpt-5",
+                    "gpt-4.1-mini",
+                    "gpt-4.1",
+                    "gpt-4o-mini",
+                    "gpt-4o",
+                    "custom"
+                ], {"default": "gpt-5-nano"}),
+                "custom_model": ("STRING", {"default": "", "multiline": False}),
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "system_message": ("STRING", {"default": "You are a helpful assistant.", "multiline": True}),
+                "temperature": ("FLOAT", {"default": 1, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
+                "verbosity": (["none", "low", "medium", "high"], {"default": "medium"}),
+                "reasoning_effort": (["none", "minimal", "low", "medium", "high"], {"default": "medium"}),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+            }
+        }
+
+    RETURN_TYPES = (
+        "STRING",
+        "STRING",
+        "STRING",
+        "INT",
+        "INT",
+        "FLOAT",
+        "COMBO",
+        "COMBO",
+        "COMBO",
+    )
+    RETURN_NAMES = (
+        "response_json",
+        "tags",
+        "lyrics",
+        "seed",
+        "bpm",
+        "duration",
+        "timesignature",
+        "language",
+        "keyscale",
+    )
+    FUNCTION = "generate"
+    CATEGORY = "Aquasite/LLM"
+
+    def generate(self, openai_api_key, model, custom_model, prompt, system_message, temperature=0.8, top_p=0.95, seed=0, verbosity="medium", reasoning_effort="medium", image=None):
+        if not openai_api_key:
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "type": "string",
+                    "description": "Style prompt describing the song's musical characteristics. This is the primary control for musical style, instrumentation, and mood. Can be formatted as: (1) Comma-separated keywords: \"rock, pop, energetic, electric guitar, male vocals, 120 bpm\", (2) Descriptive phrases: \"A smooth jazzy lo-fi hip-hop track with gentle piano melody\", (3) Mixed format combining both. Include any of: genre/subgenre (rock, jazz, EDM, folk, metal, hip-hop, R&B, country, classical, electronic), instruments (guitar, piano, drums, bass, synthesizer, violin, saxophone, trumpet), vocal style (male/female vocals, raspy, smooth, powerful, whispered, choir, a cappella), mood/energy (energetic, melancholic, uplifting, dark, romantic, aggressive, chill, epic), tempo descriptor (slow, mid-tempo, fast, 120 bpm), production style (lo-fi, polished, raw, orchestral, acoustic, electronic), era/influence (1980s, vintage, modern, retro). For instrumental-only tracks, include \"instrumental\" in tags. For specific vocal techniques: \"a cappella\" for vocals only, \"b-box\" for beatboxing. The model supports all mainstream music styles and responds well to detailed, specific descriptions."
+                },
+                "lyrics": {
+                    "type": "string",
+                    "description": "Complete song lyrics with structure tags and optional language codes. STRUCTURE TAGS (in square brackets): [intro], [verse], [verse 1], [verse 2], [pre-chorus], [chorus], [hook], [bridge], [breakdown], [drop], [outro], [instrumental], [inst]. Use [inst] or [instrumental] for instrumental-only sections or entire instrumental tracks. LANGUAGE CODES: For non-English lyrics, prefix each line or section with language code in brackets: [zh] for Chinese, [ko] for Korean, [ja] for Japanese, [es] for Spanish, [de] for German, [fr] for French, [pt] for Portuguese, [it] for Italian, [ru] for Russian, [pl] for Polish, [ar] for Arabic, [th] for Thai, [vi] for Vietnamese. Example: \"[verse]\\n[zh]wo de xin li zhi you ni\\n[zh]mei yi tian dou xiang nian ni\". For romanized input of non-Latin scripts, include tone numbers for Chinese (e.g., \"wo3 ai4 ni3\"). PERFORMANCE DIRECTIONS: Can include [whispered], [spoken], [shouted], or descriptive brackets like [Intro - Acoustic Guitar], [Guitar Solo], [Drop - Heavy Bass]. FORMATTING: Use \\n for line breaks between lyrics lines. Separate sections with blank lines. Keep lyrics concise and rhythmic to match the musical style. For vocal harmony or duets, indicate with [Male Vocal], [Female Vocal], or [Duet]."
+                },
+                "seed": {
+                    "type": "integer",
+                    "description": "Random seed for reproducible generation. Use -1 for random seed (recommended for exploring variations). Use a specific positive integer (e.g., 42, 12345) to reproduce the exact same output with identical parameters. When batch generating, different seeds produce different variations of the same prompt. Useful for: iterating on a good result, sharing reproducible outputs, A/B testing parameter changes."
+                },
+                "bpm": {
+                    "type": "integer",
+                    "description": "Tempo in beats per minute. Typical ranges by genre: Ballad/Ambient (60-80), R&B/Soul (70-100), Hip-Hop (80-115), Pop (100-130), House/Disco (115-130), Rock (110-140), Techno/Trance (125-150), Drum and Bass (160-180), Hardcore/Speedcore (180+). Common tempos: 80 (slow groove), 100 (moderate), 120 (standard dance/pop), 140 (energetic), 170 (DnB). The tempo should match the energy described in tags. Can also include BPM directly in tags field for emphasis (e.g., \"120 bpm\").",
+                    "minimum": 1
+                },
+                "keyscale": {
+                    "type": "string",
+                    "description": "Musical key and scale defining the harmonic foundation. Format: \"Root Scale\" where Root is the note (A, B, C, D, E, F, G with optional # or b for sharp/flat) and Scale is \"major\" or \"minor\". Examples: \"C major\" (bright, happy), \"A minor\" (emotional, versatile), \"G major\" (warm, popular for folk/pop), \"E minor\" (powerful, common in rock), \"D minor\" (dramatic, melancholic), \"F# minor\" (dark, atmospheric), \"Bb major\" (smooth, jazzy). Major keys generally sound happier/brighter; minor keys sound more emotional/darker. Choose based on mood: uplifting songs → major keys; emotional/dark songs → minor keys. Common pairings: Pop/Dance → C/G major; Rock/Metal → E/A minor; Jazz → Bb/Eb major; Sad ballads → D/A minor."
+                },
+                "durationSeconds": {
+                    "type": "integer",
+                    "description": "Target duration of generated audio in seconds. Supported range: 30-600 seconds (ACE-Step 1.5 supports up to 10 minutes). Recommended ranges: Short/loops (30-60), Standard song (90-180), Extended (180-300), Long-form (300-600). IMPORTANT: Start with 90-120 seconds for most consistent results. Longer durations (180+ seconds) may require multiple generation attempts to maintain musical coherence throughout. Very short durations (30-60s) work well for loops, samples, or song sections. Match duration to lyric length - longer lyrics need more time.",
+                    "minimum": 1
+                },
+                "timesignature": {
+                    "type": "string",
+                    "description": "Time signature as beats per measure, affecting the rhythmic feel and groove. Valid values: \"2\" (cut time/alla breve - march-like, polka, fast classical), \"3\" (waltz time/3/4 - waltzes, some ballads, folk), \"4\" (common time/4/4 - most popular music: rock, pop, hip-hop, electronic, jazz), \"6\" (compound time/6/8 - shuffle feel, triplet-based grooves, some ballads, Irish jigs). Most music uses \"4\" (4/4 time). Use \"3\" for waltzes or swaying ballads. Use \"6\" for shuffle/swing feels or compound grooves. Use \"2\" for marches or fast-paced classical styles.",
+                    "enum": ["2", "3", "4", "6"]
+                },
+                "language": {
+                    "type": "string",
+                    "description": "ISO 639-1 two-character code for the primary language of the lyrics. Must be exactly 2 lowercase letters. Top 10 best-supported languages: \"en\" (English), \"zh\" (Chinese Mandarin), \"ja\" (Japanese), \"ko\" (Korean), \"es\" (Spanish), \"de\" (German), \"fr\" (French), \"pt\" (Portuguese), \"it\" (Italian), \"ru\" (Russian). Additional supported languages include: \"pl\" (Polish), \"ar\" (Arabic), \"th\" (Thai), \"vi\" (Vietnamese), \"nl\" (Dutch), \"sv\" (Swedish), \"tr\" (Turkish), \"id\" (Indonesian), \"hi\" (Hindi), \"uk\" (Ukrainian), and 40+ more. For multilingual songs, set to the dominant language and use language codes in lyrics field for mixed-language sections. Performance may vary for less common languages due to training data distribution.",
+                    "pattern": "^[a-z]{2}$",
+                    "minLength": 2,
+                    "maxLength": 2
+                }
+            },
+            "required": [
+                "tags",
+                "lyrics",
+                "seed",
+                "bpm",
+                "keyscale",
+                "durationSeconds",
+                "timesignature",
+                "language"
+            ],
+            "additionalProperties": False
+        }
+
+        model_name = custom_model if model == "custom" and custom_model else model
+        seed_instruction = f"Seed: {seed}. Use it to vary output across runs."
+
+        user_content = [{"type": "input_text", "text": f"{prompt}\n\n{seed_instruction}"}]
+
+        if image is not None:
+            if isinstance(image, torch.Tensor):
+                image = image.cpu().numpy()
+            if len(image.shape) == 4:
+                image = image[0]
+            if image.dtype != np.uint8:
+                if image.max() <= 1:
+                    image = (image * 255).astype(np.uint8)
+                else:
+                    image = image.astype(np.uint8)
+
+            img = Image.fromarray(image)
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format="PNG")
+            img_byte_arr.seek(0)
+            img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+            user_content.append({
+                "type": "input_image",
+                "image_url": f"data:image/png;base64,{img_base64}"
+            })
+
+        payload = {
+            "model": model_name,
+            "input": [
+                {
+                    "role": "developer",
+                    "content": [{"type": "input_text", "text": system_message}] if system_message else []
+                },
+                {
+                    "role": "user",
+                    "content": user_content
+                }
+            ],
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "song_generation_response",
+                    "strict": True,
+                    "schema": schema
+                }
+            },
+            "temperature": temperature,
+            "top_p": top_p,
+            "tools": [],
+            "store": False,
+            "include": []
+        }
+        if verbosity != "none":
+            payload["text"]["verbosity"] = verbosity
+        if reasoning_effort != "none":
+            payload["reasoning"] = {"effort": reasoning_effort}
+
+        try:
+            response = requests.post(
+                "https://api.openai.com/v1/responses",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openai_api_key}"
+                },
+                json=payload,
+                timeout=120
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            content = data.get("output_text", "")
+            if not content:
+                output = data.get("output", [])
+                parts = []
+                for item in output:
+                    for part in item.get("content", []) or []:
+                        if part.get("type") in ("output_text", "text"):
+                            parts.append(part.get("text", ""))
+                content = "".join(parts)
+
+            success, json_response = self.try_parse_json(content)
+            if not success or not isinstance(json_response, dict):
+                json_response = {}
+
+            tags = str(json_response.get("tags", "") or "")
+
+            lyrics = json_response.get("lyrics", "")
+            if isinstance(lyrics, str):
+                lyrics = lyrics.replace("\\n\\n", "\n").replace("\n\n", "\n")
+
+            seed_value = self._coerce_int(json_response.get("seed"), default=seed)
+            bpm = self._coerce_int(json_response.get("bpm"), default=120)
+            duration = self._coerce_float(json_response.get("durationSeconds"), default=120.0)
+            timesignature = str(json_response.get("timesignature", "4"))
+            language = str(json_response.get("language", "en"))
+            keyscale = str(json_response.get("keyscale", "C major"))
+
+            response_json = json.dumps({
+                "tags": tags,
+                "lyrics": lyrics,
+                "seed": seed_value,
+                "bpm": bpm,
+                "keyscale": keyscale,
+                "durationSeconds": duration,
+                "timesignature": timesignature,
+                "language": language
+            })
+
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale)
+        except Exception as e:
+            print(f"Error in OpenAI API: {str(e)}")
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
+
+    def prepare_json(self, text):
+        text = text.replace("```json", "").replace("```", "").strip()
+        return text
+
+    def try_parse_json(self, text):
+        try:
+            cleaned_text = self.prepare_json(text)
+            return True, json.loads(cleaned_text)
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {str(e)}")
+            return False, text
+        except Exception as e:
+            print(f"Unexpected error while parsing JSON: {str(e)}")
+            return False, text
+
+    def _coerce_int(self, value, default=0):
+        try:
+            return int(value)
+        except Exception:
+            return default
+
+    def _coerce_float(self, value, default=0.0):
+        try:
+            return float(value)
+        except Exception:
+            return default
