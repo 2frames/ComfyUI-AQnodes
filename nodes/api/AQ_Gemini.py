@@ -299,8 +299,8 @@ class AQ_Gemini_acstep15:
                 "custom_model": ("STRING", {"default": "", "multiline": False}),
                 "prompt": ("STRING", {"default": "", "multiline": True}),
                 "system_message": ("STRING", {"default": "You are a helpful assistant.", "multiline": True}),
-                "temperature": ("FLOAT", {"default": 1, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "temperature": ("FLOAT", {"default": 1, "min": -1.0, "max": 2.0, "step": 0.05}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": -1.0, "max": 1.0, "step": 0.01}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
             "optional": {
@@ -318,6 +318,7 @@ class AQ_Gemini_acstep15:
         "COMBO",
         "COMBO",
         "COMBO",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -329,6 +330,7 @@ class AQ_Gemini_acstep15:
         "timesignature",
         "language",
         "keyscale",
+        "instruction",
     )
     FUNCTION = "generate"
     CATEGORY = "Aquasite/LLM"
@@ -589,8 +591,18 @@ class AQ_OpenAI_acstep15:
     CATEGORY = "Aquasite/LLM"
 
     def generate(self, openai_api_key, model, custom_model, prompt, system_message, temperature=0.8, top_p=0.95, seed=0, verbosity="medium", reasoning_effort="medium", image=None):
+        instruction = (
+            "AQ_OpenAI_acstep15 node:\n"
+            "- Uses OpenAI Responses API with JSON schema output.\n"
+            "- Provide prompt + optional image, returns fields suitable for TextEncodeAceStepAudio15.\n"
+            "- If temperature or top_p is negative, that parameter is omitted from the request.\n"
+            "- verbosity: none|low|medium|high (none omits).\n"
+            "- reasoning_effort: none|minimal|low|medium|high (none omits).\n"
+            "- response_json contains the raw JSON output (or error JSON).\n"
+            "- tags/lyrics/bpm/duration/timesignature/language/keyscale are parsed from JSON."
+        )
         if not openai_api_key:
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
 
         schema = {
             "type": "object",
@@ -693,12 +705,14 @@ class AQ_OpenAI_acstep15:
                     "schema": schema
                 }
             },
-            "temperature": temperature,
-            "top_p": top_p,
             "tools": [],
             "store": False,
             "include": []
         }
+        if temperature is not None and temperature >= 0:
+            payload["temperature"] = temperature
+        if top_p is not None and top_p >= 0:
+            payload["top_p"] = top_p
         if verbosity != "none":
             payload["text"]["verbosity"] = verbosity
         if reasoning_effort != "none":
@@ -723,7 +737,7 @@ class AQ_OpenAI_acstep15:
                         "body": response.text
                     }
                 })
-                return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major")
+                return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
             response.raise_for_status()
             data = response.json()
 
@@ -765,11 +779,11 @@ class AQ_OpenAI_acstep15:
                 "language": language
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, instruction)
         except Exception as e:
             print(f"Error in OpenAI API: {str(e)}")
             error_json = json.dumps({"error": str(e)})
-            return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major")
+            return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
 
     def prepare_json(self, text):
         text = text.replace("```json", "").replace("```", "").strip()
