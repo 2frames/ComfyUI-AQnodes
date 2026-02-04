@@ -714,6 +714,16 @@ class AQ_OpenAI_acstep15:
                 json=payload,
                 timeout=120
             )
+            if not response.ok:
+                print(f"OpenAI API error status: {response.status_code}")
+                print(f"OpenAI API error body: {response.text}")
+                error_json = json.dumps({
+                    "error": {
+                        "status_code": response.status_code,
+                        "body": response.text
+                    }
+                })
+                return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major")
             response.raise_for_status()
             data = response.json()
 
@@ -758,7 +768,8 @@ class AQ_OpenAI_acstep15:
             return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale)
         except Exception as e:
             print(f"Error in OpenAI API: {str(e)}")
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
+            error_json = json.dumps({"error": str(e)})
+            return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major")
 
     def prepare_json(self, text):
         text = text.replace("```json", "").replace("```", "").strip()
