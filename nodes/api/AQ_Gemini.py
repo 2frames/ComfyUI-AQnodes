@@ -301,6 +301,7 @@ class AQ_Gemini_acstep15:
                 "system_message": ("STRING", {"default": "You are a helpful assistant.", "multiline": True}),
                 "temperature": ("FLOAT", {"default": 1, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -312,6 +313,7 @@ class AQ_Gemini_acstep15:
         "STRING",
         "STRING",
         "INT",
+        "INT",
         "FLOAT",
         "COMBO",
         "COMBO",
@@ -321,6 +323,7 @@ class AQ_Gemini_acstep15:
         "response_json",
         "tags",
         "lyrics",
+        "seed",
         "bpm",
         "duration",
         "timesignature",
@@ -330,9 +333,9 @@ class AQ_Gemini_acstep15:
     FUNCTION = "generate"
     CATEGORY = "Aquasite/LLM"
 
-    def generate(self, gemini_api_key, model_selection, custom_model, prompt, system_message, temperature=0.8, top_p=0.95, image=None):
+    def generate(self, gemini_api_key, model_selection, custom_model, prompt, system_message, temperature=0.8, top_p=0.95, seed=0, image=None):
         if not gemini_api_key:
-            return ("", "", "", 120, 120.0, "4", "en", "C major")
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
 
         json_schema = {
             "type": "object",
@@ -340,6 +343,7 @@ class AQ_Gemini_acstep15:
                 "description",
                 "tags",
                 "lyrics",
+                "seed",
                 "bpm",
                 "keyscale",
                 "durationSeconds",
@@ -350,6 +354,7 @@ class AQ_Gemini_acstep15:
                 "description": {"type": "string"},
                 "tags": {"type": "string"},
                 "lyrics": {"type": "string"},
+                "seed": {"type": "integer"},
                 "bpm": {"type": "integer"},
                 "keyscale": {"type": "string"},
                 "durationSeconds": {"type": "number"},
@@ -370,7 +375,8 @@ class AQ_Gemini_acstep15:
             contents = []
        
 
-            combined_prompt = f"{prompt}\n\n{json_instruction}".strip()
+            seed_instruction = f"Seed: {seed}. Use it to vary output across runs."
+            combined_prompt = f"{prompt}\n\n{seed_instruction}\n\n{json_instruction}".strip()
 
             if image is not None:
                 if isinstance(image, torch.Tensor):
@@ -443,6 +449,9 @@ class AQ_Gemini_acstep15:
 
             tags = json_response.get("tags") or json_response.get("description") or ""
             lyrics = json_response.get("lyrics", "")
+            if isinstance(lyrics, str):
+                lyrics = lyrics.replace("\\n\\n", "\n").replace("\n\n", "\n")
+            seed_value = self._coerce_int(json_response.get("seed"), default=seed)
             bpm = self._coerce_int(json_response.get("bpm"), default=120)
             duration = self._coerce_float(json_response.get("durationSeconds"), default=120.0)
             timesignature = str(json_response.get("timesignature", "4"))
@@ -453,6 +462,7 @@ class AQ_Gemini_acstep15:
                 "description": json_response.get("description", ""),
                 "tags": tags,
                 "lyrics": lyrics,
+                "seed": seed_value,
                 "bpm": bpm,
                 "keyscale": keyscale,
                 "durationSeconds": duration,
@@ -460,10 +470,10 @@ class AQ_Gemini_acstep15:
                 "language": language
             })
 
-            return (response_json, tags, lyrics, bpm, duration, timesignature, language, keyscale)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale)
         except Exception as e:
             print(f"Error in Gemini API: {str(e)}")
-            return ("", "", "", 0, 120, 120.0, "4", "en", "C major")
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
 
     def _convert_schema_dict_to_genai(self, schema_dict):
         schema_type = schema_dict.get("type", "object")
