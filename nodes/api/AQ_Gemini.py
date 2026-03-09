@@ -319,6 +319,7 @@ class AQ_Gemini_acstep15:
         "COMBO",
         "COMBO",
         "STRING",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -330,14 +331,20 @@ class AQ_Gemini_acstep15:
         "timesignature",
         "language",
         "keyscale",
+        "coverImage",
         "instruction",
     )
     FUNCTION = "generate"
     CATEGORY = "Aquasite/LLM"
 
     def generate(self, gemini_api_key, model_selection, custom_model, prompt, system_message, temperature=0.8, top_p=0.95, seed=0, image=None):
+        instruction = (
+            "AQ_Gemini_acstep15 node:\n"
+            "- Generates music metadata including album cover prompt.\n"
+            "- Uses Google Gemini API."
+        )
         if not gemini_api_key:
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", instruction)
 
         json_schema = {
             "type": "object",
@@ -350,7 +357,8 @@ class AQ_Gemini_acstep15:
                 "keyscale",
                 "durationSeconds",
                 "timesignature",
-                "language"
+                "language",
+                "coverImage"
             ],
             "properties": {
                 "description": {"type": "string"},
@@ -361,7 +369,8 @@ class AQ_Gemini_acstep15:
                 "keyscale": {"type": "string"},
                 "durationSeconds": {"type": "number"},
                 "timesignature": {"type": "string"},
-                "language": {"type": "string"}
+                "language": {"type": "string"},
+                "coverImage": {"type": "string", "description": "Prompt for generating an album cover image for this song."}
             }
         }
 
@@ -463,6 +472,7 @@ class AQ_Gemini_acstep15:
             timesignature = str(json_response.get("timesignature", "4"))
             language = str(json_response.get("language", "en"))
             keyscale = str(json_response.get("keyscale", "C major"))
+            coverImage = str(json_response.get("coverImage", ""))
 
             response_json = json.dumps({
                 "description": json_response.get("description", ""),
@@ -473,10 +483,11 @@ class AQ_Gemini_acstep15:
                 "keyscale": keyscale,
                 "durationSeconds": duration,
                 "timesignature": timesignature,
-                "language": language
+                "language": language,
+                "coverImage": coverImage
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, instruction)
         except Exception as e:
             print(f"Error in Gemini API: {str(e)}")
             raise e
@@ -579,6 +590,8 @@ class AQ_OpenAI_acstep15:
         "COMBO",
         "COMBO",
         "COMBO",
+        "STRING",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -590,6 +603,8 @@ class AQ_OpenAI_acstep15:
         "timesignature",
         "language",
         "keyscale",
+        "coverImage",
+        "instruction",
     )
     FUNCTION = "generate"
     CATEGORY = "Aquasite/LLM"
@@ -603,10 +618,10 @@ class AQ_OpenAI_acstep15:
             "- verbosity: none|low|medium|high (none omits).\n"
             "- reasoning_effort: none|minimal|low|medium|high (none omits).\n"
             "- response_json contains the raw JSON output (or error JSON).\n"
-            "- tags/lyrics/bpm/duration/timesignature/language/keyscale are parsed from JSON."
+            "- tags/lyrics/bpm/duration/timesignature/language/keyscale/coverImage are parsed from JSON."
         )
         if not openai_api_key:
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", instruction)
 
         schema = {
             "type": "object",
@@ -648,6 +663,10 @@ class AQ_OpenAI_acstep15:
                     "pattern": "^[a-z]{2}$",
                     "minLength": 2,
                     "maxLength": 2
+                },
+                "coverImage": {
+                    "type": "string",
+                    "description": "Artistic prompt for generating an album cover visual for this song."
                 }
             },
             "required": [
@@ -658,7 +677,8 @@ class AQ_OpenAI_acstep15:
                 "keyscale",
                 "durationSeconds",
                 "timesignature",
-                "language"
+                "language",
+                "coverImage"
             ],
             "additionalProperties": False
         }
@@ -769,6 +789,7 @@ class AQ_OpenAI_acstep15:
             timesignature = str(json_response.get("timesignature", "4"))
             language = str(json_response.get("language", "en"))
             keyscale = str(json_response.get("keyscale", "C major"))
+            coverImage = str(json_response.get("coverImage", ""))
 
             response_json = json.dumps({
                 "tags": tags,
@@ -778,10 +799,11 @@ class AQ_OpenAI_acstep15:
                 "keyscale": keyscale,
                 "durationSeconds": duration,
                 "timesignature": timesignature,
-                "language": language
+                "language": language,
+                "coverImage": coverImage
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, instruction)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, instruction)
         except Exception as e:
             print(f"Error in OpenAI API: {str(e)}")
             raise e
@@ -829,7 +851,7 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
             "- Allows custom API endpoint."
         )
         if not openai_api_key:
-             return ("", "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
+             return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", instruction)
 
         model_name = custom_model if model == "custom" and custom_model else model
         
@@ -872,9 +894,10 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
                 "keyscale": {"type": "string"},
                 "durationSeconds": {"type": "integer", "minimum": 1},
                 "timesignature": {"type": "string", "enum": ["2", "3", "4", "6"]},
-                "language": {"type": "string", "pattern": "^[a-z]{2}$", "minLength": 2, "maxLength": 2}
+                "language": {"type": "string", "pattern": "^[a-z]{2}$", "minLength": 2, "maxLength": 2},
+                "coverImage": {"type": "string", "description": "Artistic prompt for generating an album cover visual for this song."}
             },
-            "required": ["tags", "lyrics", "seed", "bpm", "keyscale", "durationSeconds", "timesignature", "language"],
+            "required": ["tags", "lyrics", "seed", "bpm", "keyscale", "durationSeconds", "timesignature", "language", "coverImage"],
             "additionalProperties": False
         }
 
@@ -934,6 +957,7 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
             timesignature = str(json_response.get("timesignature", "4"))
             language = str(json_response.get("language", "en"))
             keyscale = str(json_response.get("keyscale", "C major"))
+            coverImage = str(json_response.get("coverImage", ""))
 
             response_json = json.dumps({
                 "tags": tags,
@@ -943,10 +967,11 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
                 "keyscale": keyscale,
                 "durationSeconds": duration,
                 "timesignature": timesignature,
-                "language": language
+                "language": language,
+                "coverImage": coverImage
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, instruction)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, instruction)
         except Exception as e:
             print(f"Error in API: {str(e)}")
             raise e
@@ -970,6 +995,7 @@ class AQ_Parse_JSON_to_acestep:
         "COMBO",
         "COMBO",
         "COMBO",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -981,6 +1007,7 @@ class AQ_Parse_JSON_to_acestep:
         "timesignature",
         "language",
         "keyscale",
+        "coverImage",
     )
     FUNCTION = "parse"
     CATEGORY = "Aquasite/LLM"
@@ -1011,12 +1038,13 @@ class AQ_Parse_JSON_to_acestep:
             timesignature = str(data.get("timesignature", "4"))
             language = str(data.get("language", "en"))
             keyscale = str(data.get("keyscale", "C major"))
+            coverImage = str(data.get("coverImage", ""))
             
             # Ensure it's a valid COMBO value for ComfyUI if needed, 
             # but usually RETURN_TYPES "COMBO" means it returns one of the values.
             # We'll just return the strings as they are.
 
-            return (json_text, tags, lyrics, seed, bpm, duration, timesignature, language, keyscale)
+            return (json_text, tags, lyrics, seed, bpm, duration, timesignature, language, keyscale, coverImage)
         except Exception as e:
             print(f"Error parsing JSON in AQ_Parse_JSON_to_acestep: {str(e)}")
             # Fail the node if parsing fails
