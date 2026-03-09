@@ -447,12 +447,16 @@ class AQ_Gemini_acstep15:
 
             success, json_response = self.try_parse_json(response)
             if not success or not isinstance(json_response, dict):
-                json_response = {}
+                raise Exception(f"Failed to parse Gemini response as JSON: {response}")
 
             tags = json_response.get("tags") or json_response.get("description") or ""
             lyrics = json_response.get("lyrics", "")
             if isinstance(lyrics, str):
-                lyrics = lyrics.replace("\\n\\n", "\n").replace("\n\n", "\n")
+                # Replace literal \n and \\n with actual newlines
+                lyrics = lyrics.replace("\\n", "\n")
+                # # Normalize any double newlines
+                # lyrics = lyrics.replace("\n\n", "\n")
+                
             seed_value = self._coerce_int(json_response.get("seed"), default=seed)
             bpm = self._coerce_int(json_response.get("bpm"), default=120)
             duration = self._coerce_float(json_response.get("durationSeconds"), default=120.0)
@@ -475,7 +479,7 @@ class AQ_Gemini_acstep15:
             return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale)
         except Exception as e:
             print(f"Error in Gemini API: {str(e)}")
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major")
+            raise e
 
     def _convert_schema_dict_to_genai(self, schema_dict):
         schema_type = schema_dict.get("type", "object")
@@ -726,18 +730,13 @@ class AQ_OpenAI_acstep15:
                     "Authorization": f"Bearer {openai_api_key}"
                 },
                 json=payload,
-                timeout=120
+                timeout=300
             )
             if not response.ok:
                 print(f"OpenAI API error status: {response.status_code}")
                 print(f"OpenAI API error body: {response.text}")
-                error_json = json.dumps({
-                    "error": {
-                        "status_code": response.status_code,
-                        "body": response.text
-                    }
-                })
-                return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
+                raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+
             response.raise_for_status()
             data = response.json()
 
@@ -753,13 +752,16 @@ class AQ_OpenAI_acstep15:
 
             success, json_response = self.try_parse_json(content)
             if not success or not isinstance(json_response, dict):
-                json_response = {}
+                raise Exception(f"Failed to parse OpenAI response as JSON: {content}")
 
             tags = str(json_response.get("tags", "") or "")
 
             lyrics = json_response.get("lyrics", "")
             if isinstance(lyrics, str):
-                lyrics = lyrics.replace("\\n\\n", "\n").replace("\n\n", "\n")
+                # Replace literal \n and \\n with actual newlines
+                lyrics = lyrics.replace("\\n", "\n")
+                # # Normalize any double newlines
+                # lyrics = lyrics.replace("\n\n", "\n")
 
             seed_value = self._coerce_int(json_response.get("seed"), default=seed)
             bpm = self._coerce_int(json_response.get("bpm"), default=120)
@@ -782,8 +784,7 @@ class AQ_OpenAI_acstep15:
             return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, instruction)
         except Exception as e:
             print(f"Error in OpenAI API: {str(e)}")
-            error_json = json.dumps({"error": str(e)})
-            return (error_json, "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
+            raise e
 
     def prepare_json(self, text):
         text = text.replace("```json", "").replace("```", "").strip()
@@ -799,6 +800,206 @@ class AQ_OpenAI_acstep15:
         except Exception as e:
             print(f"Unexpected error while parsing JSON: {str(e)}")
             return False, text
+
+class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
+    @classmethod
+    def INPUT_TYPES(s):
+        types = AQ_OpenAI_acstep15.INPUT_TYPES()
+        types["required"].update({
+            "api_endpoint": ("STRING", {"default": "https://api.openai.com/v1/chat/completions"}),
+        })
+        return types
+
+    def generate(self, openai_api_key, model, custom_model, prompt, system_message, api_endpoint, temperature=0.8, top_p=0.95, seed=0, verbosity="medium", reasoning_effort="medium", image=None):
+        instruction = (
+            "AQ_OpenAI_Compatible_acstep15 node:\n"
+            "- Uses any OpenAI-compatible Chat Completions API (v1/chat/completions).\n"
+            "- Allows custom API endpoint."
+        )
+        if not openai_api_key:
+             return ("", "", "", seed, 120, 120.0, "4", "en", "C major", instruction)
+
+        model_name = custom_model if model == "custom" and custom_model else model
+        
+        messages = []
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+            
+        user_content = [{"type": "text", "text": f"{prompt}\n\nSeed: {seed}"}]
+
+        if image is not None:
+            if isinstance(image, torch.Tensor):
+                image = image.cpu().numpy()
+            if len(image.shape) == 4:
+                image = image[0]
+            if image.dtype != np.uint8:
+                if image.max() <= 1:
+                    image = (image * 255).astype(np.uint8)
+                else:
+                    image = image.astype(np.uint8)
+
+            img = Image.fromarray(image)
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format="PNG")
+            img_byte_arr.seek(0)
+            img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+            user_content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{img_base64}"}
+            })
+            
+        messages.append({"role": "user", "content": user_content})
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "tags": {"type": "string"},
+                "lyrics": {"type": "string"},
+                "seed": {"type": "integer"},
+                "bpm": {"type": "integer"},
+                "keyscale": {"type": "string"},
+                "durationSeconds": {"type": "integer", "minimum": 1},
+                "timesignature": {"type": "string", "enum": ["2", "3", "4", "6"]},
+                "language": {"type": "string", "pattern": "^[a-z]{2}$", "minLength": 2, "maxLength": 2}
+            },
+            "required": ["tags", "lyrics", "seed", "bpm", "keyscale", "durationSeconds", "timesignature", "language"],
+            "additionalProperties": False
+        }
+
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "song_generation_response",
+                    "strict": True,
+                    "schema": schema
+                }
+            }
+        }
+        
+        if temperature is not None and temperature >= 0:
+            payload["temperature"] = temperature
+        if top_p is not None and top_p >= 0:
+            payload["top_p"] = top_p
+        if seed is not None:
+            payload["seed"] = seed
+
+        try:
+            response = requests.post(
+                api_endpoint,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openai_api_key}"
+                },
+                json=payload,
+                timeout=300
+            )
+            if not response.ok:
+                print(f"API error status: {response.status_code}")
+                print(f"API error body: {response.text}")
+                raise Exception(f"API error: {response.status_code} - {response.text}")
+
+            data = response.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            
+            if not content:
+                raise Exception(f"Empty response from API: {data}")
+
+            success, json_response = self.try_parse_json(content)
+            if not success or not isinstance(json_response, dict):
+                raise Exception(f"Failed to parse response as JSON: {content}")
+
+            tags = str(json_response.get("tags", "") or "")
+            lyrics = json_response.get("lyrics", "")
+            if isinstance(lyrics, str):
+                lyrics = lyrics.replace("\\n", "\n")
+
+            seed_value = self._coerce_int(json_response.get("seed"), default=seed)
+            bpm = self._coerce_int(json_response.get("bpm"), default=120)
+            duration = self._coerce_float(json_response.get("durationSeconds"), default=120.0)
+            timesignature = str(json_response.get("timesignature", "4"))
+            language = str(json_response.get("language", "en"))
+            keyscale = str(json_response.get("keyscale", "C major"))
+
+            response_json = json.dumps({
+                "tags": tags,
+                "lyrics": lyrics,
+                "seed": seed_value,
+                "bpm": bpm,
+                "keyscale": keyscale,
+                "durationSeconds": duration,
+                "timesignature": timesignature,
+                "language": language
+            })
+
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, instruction)
+        except Exception as e:
+            print(f"Error in API: {str(e)}")
+            raise e
+
+class AQ_Parse_JSON_to_acestep:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "json_text": ("STRING", {"multiline": True}),
+            }
+        }
+
+    RETURN_TYPES = (
+        "STRING",
+        "STRING",
+        "STRING",
+        "INT",
+        "INT",
+        "FLOAT",
+        "COMBO",
+        "COMBO",
+        "COMBO",
+    )
+    RETURN_NAMES = (
+        "response_json",
+        "tags",
+        "lyrics",
+        "seed",
+        "bpm",
+        "duration",
+        "timesignature",
+        "language",
+        "keyscale",
+    )
+    FUNCTION = "parse"
+    CATEGORY = "Aquasite/LLM"
+
+    def parse(self, json_text):
+        try:
+            # Clean up potential markdown
+            cleaned_text = json_text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(cleaned_text)
+            
+            tags = str(data.get("tags") or data.get("description") or "")
+            lyrics = data.get("lyrics", "")
+            if isinstance(lyrics, str):
+                lyrics = lyrics.replace("\\n", "\n")
+            
+            seed = int(data.get("seed", 0))
+            bpm = int(data.get("bpm", 120))
+            duration = float(data.get("durationSeconds", 120.0))
+            timesignature = str(data.get("timesignature", "4"))
+            language = str(data.get("language", "en"))
+            keyscale = str(data.get("keyscale", "C major"))
+            
+            # Ensure it's a valid COMBO value for ComfyUI if needed, 
+            # but usually RETURN_TYPES "COMBO" means it returns one of the values.
+            # We'll just return the strings as they are.
+
+            return (json_text, tags, lyrics, seed, bpm, duration, timesignature, language, keyscale)
+        except Exception as e:
+            print(f"Error parsing JSON in AQ_Parse_JSON_to_acestep: {str(e)}")
+            # Fail the node if parsing fails
+            raise e
 
     def _coerce_int(self, value, default=0):
         try:

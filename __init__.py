@@ -2,7 +2,13 @@ from .nodes.pulid.AQ_MasksAndImagesAsList import AQ_MasksAndImagesAsList
 from .nodes.transformers.AQ_Qwen import AQ_Qwen
 from .nodes.transformers.AQ_Qwen import AQ_QwenLoader
 from .nodes.pulid.AQ_multiface_ApplyPulidFlux import AQ_multiface_ApplyPulidFlux
-from .nodes.api.AQ_Gemini import AQ_Gemini, AQ_Gemini_acstep15, AQ_OpenAI_acstep15
+from .nodes.api.AQ_Gemini import (
+    AQ_Gemini, 
+    AQ_Gemini_acstep15, 
+    AQ_OpenAI_acstep15, 
+    AQ_OpenAI_Compatible_acstep15,
+    AQ_Parse_JSON_to_acestep
+)
 from .nodes.api.AQ_SendImageToAPI import AQ_SendImageToAPI
 
 from .nodes.clip.AQ_CLIPSetLastLayer import AQ_CLIPSetLastLayer
@@ -22,6 +28,8 @@ NODE_CLASS_MAPPINGS = {
     "AQ_Gemini": AQ_Gemini,
     "AQ_Gemini_acstep15": AQ_Gemini_acstep15,
     "AQ_OpenAI_acstep15": AQ_OpenAI_acstep15,
+    "AQ_openai_compatible": AQ_OpenAI_Compatible_acstep15,
+    "AQ_parse_json_to_acestep": AQ_Parse_JSON_to_acestep,
     "AQ_SendImageToAPI": AQ_SendImageToAPI,
     "AQ_CLIPSetLastLayer": AQ_CLIPSetLastLayer,
     "AQ_Increment": AQ_Increment,
@@ -46,6 +54,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AQ_Gemini": "AQ_Gemini",
     "AQ_Gemini_acstep15": "AQ_Gemini_acstep15",
     "AQ_OpenAI_acstep15": "AQ_OpenAI_acstep15",
+    "AQ_openai_compatible": "AQ_openai_compatible",
+    "AQ_parse_json_to_acestep": "AQ_parse_json_to_acestep",
     "AQ_SendImageToAPI": "AQ_SendImageToAPI",
     "AQ_CLIPSetLastLayer": "AQ_CLIPSetLastLayer",
     "AQ_Increment": "AQ_Increment",
