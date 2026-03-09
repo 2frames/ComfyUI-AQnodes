@@ -801,6 +801,18 @@ class AQ_OpenAI_acstep15:
             print(f"Unexpected error while parsing JSON: {str(e)}")
             return False, text
 
+    def _coerce_int(self, value, default=0):
+        try:
+            return int(value)
+        except Exception:
+            return default
+
+    def _coerce_float(self, value, default=0.0):
+        try:
+            return float(value)
+        except Exception:
+            return default
+
 class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
     @classmethod
     def INPUT_TYPES(s):
@@ -975,8 +987,17 @@ class AQ_Parse_JSON_to_acestep:
 
     def parse(self, json_text):
         try:
-            # Clean up potential markdown
-            cleaned_text = json_text.replace("```json", "").replace("```", "").strip()
+            # Clean up potential markdown and extract JSON block
+            import re
+            
+            # Find the first '{' and last '}'
+            match = re.search(r"(\{.*\})", json_text, re.DOTALL)
+            if match:
+                cleaned_text = match.group(1)
+            else:
+                # Fallback to existing cleaning logic
+                cleaned_text = json_text.replace("```json", "").replace("```", "").strip()
+            
             data = json.loads(cleaned_text)
             
             tags = str(data.get("tags") or data.get("description") or "")
@@ -984,9 +1005,9 @@ class AQ_Parse_JSON_to_acestep:
             if isinstance(lyrics, str):
                 lyrics = lyrics.replace("\\n", "\n")
             
-            seed = int(data.get("seed", 0))
-            bpm = int(data.get("bpm", 120))
-            duration = float(data.get("durationSeconds", 120.0))
+            seed = self._coerce_int(data.get("seed"), default=0)
+            bpm = self._coerce_int(data.get("bpm"), default=120)
+            duration = self._coerce_float(data.get("durationSeconds"), default=120.0)
             timesignature = str(data.get("timesignature", "4"))
             language = str(data.get("language", "en"))
             keyscale = str(data.get("keyscale", "C major"))
