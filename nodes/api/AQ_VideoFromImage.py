@@ -128,7 +128,7 @@ class AQ_StillImageToVideo:
             for codec_fn in (self._nvenc_args, self._amf_args, self._qsv_args):
                 cmd = self._build_cmd(img_path, wav_path, output_path, fps,
                                       codec_fn(), meta_args)
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=6000)
                 if result.returncode == 0:
                     return
                 print(f"[AQ_StillImageToVideo] GPU encoder failed, trying next: "
@@ -157,7 +157,7 @@ class AQ_StillImageToVideo:
         ] + meta_args + [output_path]
 
     def _run(self, cmd):
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=6000)
         if result.returncode != 0:
             print(f"ffmpeg stderr:\n{result.stderr}")
             raise RuntimeError(
