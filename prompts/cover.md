@@ -19,9 +19,9 @@ Let the color palette, lighting, and visual atmosphere reflect this musical char
 
 **Typography — integrate the following text into the image design:**
 
-- **Title** (bold, highly legible, prominent placement): {title}
-- **Tagline** (smaller subtitle beneath or near the title): {tagline}
-- **Headline** (largest, most dominant text element — this is the first thing the viewer reads): {headline}
+- (bold, highly legible, prominent placement): "{title}"
+- (smaller subtitle beneath or near the title): "{tagline}"
+- (largest, most dominant text element — this is the first thing the viewer reads): "{headline}"
 
 Text must be sharp, high-contrast, and readable at thumbnail size (even at 320px wide).
 Use a typeface and color that complement the visual style. Avoid script fonts that are hard to read at small sizes.

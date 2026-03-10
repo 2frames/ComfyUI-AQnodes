@@ -11,6 +11,7 @@ from .nodes.api.AQ_Gemini import (
 )
 from .nodes.api.AQ_SendImageToAPI import AQ_SendImageToAPI
 from .nodes.api.AQ_Cover import AQ_CoverPrompt
+from .nodes.api.AQ_VideoFromImage import AQ_StillImageToVideo
 
 from .nodes.clip.AQ_CLIPSetLastLayer import AQ_CLIPSetLastLayer
 from .nodes.numbers.AQ_Numbers import AQ_Increment, AQ_Random
@@ -46,6 +47,7 @@ NODE_CLASS_MAPPINGS = {
     "AQ_TextEncodeQwenImageEdit": AQ_TextEncodeQwenImageEdit,
     "AQ_TextEncodeQwenImageEditPlus": AQ_TextEncodeQwenImageEditPlus,
     "AQ_CoverPrompt": AQ_CoverPrompt,
+    "AQ_StillImageToVideo": AQ_StillImageToVideo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -73,6 +75,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AQ_TextEncodeQwenImageEdit": "AQ_TextEncodeQwenImageEdit",
     "AQ_TextEncodeQwenImageEditPlus": "AQ_TextEncodeQwenImageEditPlus",
     "AQ_CoverPrompt": "AQ_CoverPrompt",
+    "AQ_StillImageToVideo": "AQ_StillImageToVideo",
 }
 
 

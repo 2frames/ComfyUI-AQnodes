@@ -1,5 +1,20 @@
 import os
 
+KEYSCALES = [
+    "C major", "C minor",
+    "C# major", "C# minor", "Db major", "Db minor",
+    "D major", "D minor",
+    "D# major", "D# minor", "Eb major", "Eb minor",
+    "E major", "E minor",
+    "F major", "F minor",
+    "F# major", "F# minor", "Gb major", "Gb minor",
+    "G major", "G minor",
+    "G# major", "G# minor", "Ab major", "Ab minor",
+    "A major", "A minor",
+    "A# major", "A# minor", "Bb major", "Bb minor",
+    "B major", "B minor",
+]
+
 
 class AQ_CoverPrompt:
     ASPECT_RATIO_NOTES = {
@@ -26,7 +41,7 @@ class AQ_CoverPrompt:
                 "tagline":       ("STRING", {"multiline": False, "default": ""}),
                 "headline":      ("STRING", {"multiline": False, "default": ""}),
                 "tags":          ("STRING", {"multiline": False, "default": ""}),
-                "keyscale":      ("STRING", {"multiline": False, "default": "C major"}),
+                "keyscale":      (KEYSCALES, {"default": "C major"}),
                 "style":         (["cinematic photo", "digital illustration", "oil painting", "neon art", "minimalist", "watercolor", "3D render"], {"default": "cinematic photo"}),
                 "aspect_ratio":  (["16:9 YouTube", "1:1 Square", "4:5 Portrait"], {"default": "16:9 YouTube"}),
             },
