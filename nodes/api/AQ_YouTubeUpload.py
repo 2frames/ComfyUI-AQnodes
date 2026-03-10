@@ -1,6 +1,12 @@
 import os
 import requests
 
+_KEYSCALES = [
+    f"{root} {quality}"
+    for quality in ["major", "minor"]
+    for root in ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"]
+]
+
 
 _INSTRUCTION = """AQ_YouTubeUpload — How to get credentials (one-time setup)
 =================================================================
@@ -11,57 +17,95 @@ You need three values: Client ID, Client Secret, Refresh Token.
 STEP 1 — Create a Google Cloud project & enable YouTube API
 -----------------------------------------------------------
 1. Go to https://console.cloud.google.com/
-2. Create a new project (top bar → "New Project").
-3. Navigate to: APIs & Services → Library
-4. Search "YouTube Data API v3" → click it → Enable.
+2. Create a new project (top bar -> "New Project").
+3. Navigate to: APIs & Services -> Library
+4. Search "YouTube Data API v3" -> click it -> Enable.
 
-STEP 2 — Create OAuth 2.0 credentials
---------------------------------------
-1. Navigate to: APIs & Services → Credentials
-2. Click "Create Credentials" → "OAuth client ID"
-3. If prompted, configure the OAuth consent screen first:
-   - User type: External
-   - Fill in app name, your email → Save
-   - Scopes: add "YouTube Data API v3 → .../auth/youtube.upload"
-   - Add yourself as a Test User (your Google account email)
-4. Back in Credentials → Create Credentials → OAuth client ID:
-   - Application type: "Desktop app"
-   - Give it a name → Create
-5. Copy "Client ID" and "Client Secret" from the dialog.
+STEP 2 — Configure OAuth consent screen
+----------------------------------------
+1. Navigate to: APIs & Services -> OAuth consent screen
+2. User type: External -> Create
+3. Fill in App name and your email address -> Save and Continue
+4. On the Scopes screen -> Add or Remove Scopes ->
+   manually type: https://www.googleapis.com/auth/youtube.upload
+   -> Add to table -> Update -> Save and Continue
+5. On the Test users screen -> Add Users ->
+   add the Google account email that owns your YouTube channel
+   -> Save and Continue
 
-STEP 3 — Generate a Refresh Token (one-time)
---------------------------------------------
-1. Visit https://developers.google.com/oauthplayground/
-2. Click the gear icon (⚙️) in the top-right:
+STEP 3 — Create OAuth 2.0 credentials (WEB APPLICATION type)
+--------------------------------------------------------------
+!! IMPORTANT: use "Web application" type, NOT "Desktop app" !!
+The OAuth Playground requires a web redirect URI. Desktop app
+clients do not support it and will cause "unauthorized_client".
+
+1. Navigate to: APIs & Services -> Credentials
+2. Click "Create Credentials" -> "OAuth client ID"
+3. Application type: "Web application"
+4. Under "Authorized redirect URIs" -> Add URI:
+       https://developers.google.com/oauthplayground
+   (exactly as written, no trailing slash)
+5. Click Create -> copy the Client ID and Client Secret.
+
+STEP 4 — Generate a Refresh Token via OAuth Playground
+-------------------------------------------------------
+!! IMPORTANT: configure your credentials in the Playground
+   BEFORE clicking "Authorize APIs" — order matters !!
+
+1. Open https://developers.google.com/oauthplayground/
+2. Click the gear icon top-right:
    - Check "Use your own OAuth credentials"
-   - Enter your Client ID and Client Secret → Close
-3. In "Step 1 — Select & authorize APIs":
-   - Paste or find: https://www.googleapis.com/auth/youtube.upload
+   - Paste your Client ID and Client Secret
+   - Close the settings panel
+3. In "Step 1 — Select & authorize APIs" (left panel):
+   - In the input box at the bottom type:
+         https://www.googleapis.com/auth/youtube.upload
    - Click "Authorize APIs"
-   - Sign in with the Google account that owns the YouTube channel
-4. In "Step 2 — Exchange authorization code for tokens":
+   - Sign in with the Google account added as Test User in Step 2
+   - Click "Allow"
+4. You are now in "Step 2 — Exchange authorization code for tokens":
    - Click "Exchange authorization code for tokens"
-   - Copy the "Refresh token" value
+   - Copy the "Refresh token" value (starts with "1//" or "1/")
 
-STEP 4 — Fill in the node
+STEP 5 — Fill in the node
 --------------------------
-- client_id     → your OAuth Client ID
-- client_secret → your OAuth Client Secret
-- refresh_token → the refresh token from Step 3
+  client_id     -> Client ID from Step 3
+  client_secret -> Client Secret from Step 3
+  refresh_token -> Refresh token from Step 4
 
-The refresh token does not expire unless you revoke it.
-You only need to do this setup once per YouTube channel.
+Refresh tokens do not expire unless revoked.
+This setup is needed only once per YouTube channel.
+
+TROUBLESHOOTING
+---------------
+"unauthorized_client":
+  Most likely cause A: you created a "Desktop app" client instead
+  of "Web application". Re-create the OAuth client as Web app and
+  add the Playground redirect URI (Step 3 above), then redo Step 4.
+
+  Most likely cause B: you forgot to set your own credentials in
+  the Playground gear icon BEFORE authorizing. The token you got
+  belongs to Google's own Playground client, not yours.
+  Re-do Step 4 — set credentials in gear icon first, then Authorize.
+
+"access_denied" or 403 Forbidden during upload:
+  The uploading Google account is not listed as a Test User on the
+  OAuth consent screen. Add it (Step 2, item 5) and redo Step 4.
+
+"invalid_grant":
+  The refresh token has been revoked or the authorization was
+  removed. Re-generate starting from Step 4.
 
 PRIVACY STATUS
 --------------
-- private   → only you can see it
-- unlisted  → anyone with the link can see it
-- public    → visible to everyone
+  private   -> only you can see it
+  unlisted  -> anyone with the link can see it
+  public    -> visible to everyone
 
 DESCRIPTION AUTO-BUILD
 -----------------------
-If you leave 'description' empty, the node auto-composes it
-from tagline, tags, and keyscale inputs.
+If you leave description empty, the node auto-composes it from
+tagline, tags, and keyscale inputs.
 """
 
 
@@ -71,19 +115,19 @@ class AQ_YouTubeUpload:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "video_path":     ("STRING",  {"default": ""}),
-                "client_id":      ("STRING",  {"default": ""}),
-                "client_secret":  ("STRING",  {"default": ""}),
-                "refresh_token":  ("STRING",  {"default": ""}),
-                "title":          ("STRING",  {"default": "My Song"}),
+                "video_path":     ("STRING", {"default": ""}),
+                "client_id":      ("STRING", {"default": ""}),
+                "client_secret":  ("STRING", {"default": ""}),
+                "refresh_token":  ("STRING", {"default": ""}),
+                "title":          ("STRING", {"default": "My Song"}),
                 "privacy_status": (["private", "unlisted", "public"], {"default": "private"}),
             },
             "optional": {
-                "description": ("STRING",  {"multiline": True,  "default": ""}),
-                "tagline":     ("STRING",  {"multiline": False, "default": ""}),
-                "headline":    ("STRING",  {"multiline": False, "default": ""}),
-                "tags":        ("STRING",  {"multiline": False, "default": ""}),
-                "keyscale":    ("STRING",  {"multiline": False, "default": ""}),
+                "description": ("STRING", {"multiline": True,  "default": ""}),
+                "tagline":     ("STRING", {"multiline": False, "default": ""}),
+                "headline":    ("STRING", {"multiline": False, "default": ""}),
+                "tags":        ("STRING", {"multiline": False, "default": ""}),
+                "keyscale":    (_KEYSCALES, {"default": "C major"}),
             }
         }
 
@@ -103,7 +147,6 @@ class AQ_YouTubeUpload:
         if not os.path.isfile(video_path):
             raise FileNotFoundError(f"Video file not found: {video_path}")
 
-        # Auto-compose description if not provided
         if not description.strip():
             parts = []
             if tagline:
@@ -127,7 +170,7 @@ class AQ_YouTubeUpload:
             description=description,
             tags=tags_list,
             privacy_status=privacy_status,
-            category_id="10",       # 10 = Music
+            category_id="10",   # 10 = Music
         )
 
         video_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -148,7 +191,21 @@ class AQ_YouTubeUpload:
             timeout=30,
         )
         if not resp.ok:
-            raise RuntimeError(f"Failed to get access token: {resp.status_code} {resp.text}")
+            body = resp.text
+            hint = ""
+            if "unauthorized_client" in body:
+                hint = (
+                    "\nFix: re-create the OAuth client as 'Web application' type "
+                    "(not Desktop app) and add https://developers.google.com/oauthplayground "
+                    "as an authorized redirect URI, then regenerate the refresh token. "
+                    "Also make sure you set your own credentials in the Playground gear "
+                    "icon BEFORE clicking Authorize APIs."
+                )
+            elif "invalid_grant" in body:
+                hint = "\nFix: the refresh token was revoked. Re-generate it via OAuth Playground."
+            raise RuntimeError(
+                f"Failed to get access token ({resp.status_code}): {body}{hint}"
+            )
         return resp.json()["access_token"]
 
     def _resumable_upload(self, access_token, video_path, title, description,
@@ -167,26 +224,24 @@ class AQ_YouTubeUpload:
             },
         }
 
-        # Initiate upload session
         init = requests.post(
             "https://www.googleapis.com/upload/youtube/v3/videos",
             params={"uploadType": "resumable", "part": "snippet,status"},
             headers={
-                "Authorization":          f"Bearer {access_token}",
-                "Content-Type":           "application/json; charset=UTF-8",
-                "X-Upload-Content-Type":  "video/mp4",
+                "Authorization":           f"Bearer {access_token}",
+                "Content-Type":            "application/json; charset=UTF-8",
+                "X-Upload-Content-Type":   "video/mp4",
                 "X-Upload-Content-Length": str(file_size),
             },
             json=metadata,
             timeout=60,
         )
         if not init.ok:
-            raise RuntimeError(f"Upload init failed: {init.status_code} {init.text}")
+            raise RuntimeError(f"Upload init failed ({init.status_code}): {init.text}")
 
         upload_url = init.headers["Location"]
 
-        # Upload in 10 MB chunks
-        chunk_size = 10 * 1024 * 1024
+        chunk_size = 10 * 1024 * 1024  # 10 MB
         with open(video_path, "rb") as fh:
             start = 0
             while start < file_size:
@@ -205,15 +260,12 @@ class AQ_YouTubeUpload:
 
                 if put.status_code in (200, 201):
                     return put.json()["id"]
-                elif put.status_code == 308:        # Resume Incomplete
+                elif put.status_code == 308:    # Resume Incomplete
                     range_header = put.headers.get("Range", "")
-                    if range_header:
-                        start = int(range_header.split("-")[1]) + 1
-                    else:
-                        start = end + 1
+                    start = int(range_header.split("-")[1]) + 1 if range_header else end + 1
                 else:
                     raise RuntimeError(
-                        f"Upload chunk failed: {put.status_code} {put.text}"
+                        f"Upload chunk failed ({put.status_code}): {put.text}"
                     )
 
         raise RuntimeError("Upload ended without receiving a video ID")
