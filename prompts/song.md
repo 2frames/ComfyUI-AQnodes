@@ -19,6 +19,8 @@ Return ONLY valid JSON with the following fields:
 - **title** — the song's name, 1–6 words, memorable and genre-appropriate
 - **tagline** — catchy subtitle, 5–12 words, suitable for a YouTube thumbnail subtitle line
 - **headline** — bold primary text for a YouTube thumbnail, 3–8 words, ideally under 30 characters, all-caps acceptable; this is the dominant visual text
+- **yt_description** — full YouTube video description, 2–4 paragraphs: open with the mood/story, describe the sound and instrumentation, note key/BPM/genre for music discovery, close with a call-to-action or credits placeholder
+- **yt_tags** — comma-separated YouTube search keywords, 10–20 tags; mix genre, mood, instruments, era, tempo descriptor, and use-case terms (e.g. "study music", "workout playlist", "relaxing beats")
 
 ## Consistency Guidelines
 
@@ -43,6 +45,8 @@ Return ONLY valid JSON with the following fields:
   "coverImage": "Wide cinematic shot of a lone figure standing on a rain-soaked city rooftop at dusk...",
   "title": "Neon Rain",
   "tagline": "When the city lights blur your tears away",
-  "headline": "NEON RAIN"
+  "headline": "NEON RAIN",
+  "yt_description": "A melancholic synth-pop journey through rain-soaked city streets...\n\nFeaturing lush synthesizers, driving bass, and evocative vocals in G minor at 118 BPM.\n\n🎵 Stream & save | 💬 Share your thoughts below",
+  "yt_tags": "synth-pop, melancholic music, city vibes, night drive music, rainy day playlist, 80s inspired, synthwave, emotional music, study music, chill beats"
 }
 ```
