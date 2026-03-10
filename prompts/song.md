@@ -21,6 +21,11 @@ Return ONLY valid JSON with the following fields:
 - **headline** — bold primary text for a YouTube thumbnail, 3–8 words, ideally under 30 characters, all-caps acceptable; this is the dominant visual text
 - **yt_description** — full YouTube video description, 2–4 paragraphs: open with the mood/story, describe the sound and instrumentation, note key/BPM/genre for music discovery, close with a call-to-action or credits placeholder
 - **yt_tags** — comma-separated YouTube search keywords, 10–20 tags; mix genre, mood, instruments, era, tempo descriptor, and use-case terms (e.g. "study music", "workout playlist", "relaxing beats")
+- **yt_title** — SEO-optimised YouTube video title, 60–100 characters. Use a keyword-rich format with `|` or `:` as separator. Lead with the primary use-case or mood category, follow with the specific sonic identity. Examples by style:
+  - Focus/Study: `Focus Music | Minimalist Ambient Drone for Deep Work (No Distractions)`
+  - Sleep: `Deep Sleep Music | Gentle Ambient Soundscapes for Insomnia Relief`
+  - Meditation: `Pure Relaxation | Calming Piano Melodies for Inner Peace`
+  - General: `[Mood/Use-case] | [Instrument/Style] for [Activity/Feeling]`
 
 ## Consistency Guidelines
 
@@ -47,6 +52,7 @@ Return ONLY valid JSON with the following fields:
   "tagline": "When the city lights blur your tears away",
   "headline": "NEON RAIN",
   "yt_description": "A melancholic synth-pop journey through rain-soaked city streets...\n\nFeaturing lush synthesizers, driving bass, and evocative vocals in G minor at 118 BPM.\n\n🎵 Stream & save | 💬 Share your thoughts below",
-  "yt_tags": "synth-pop, melancholic music, city vibes, night drive music, rainy day playlist, 80s inspired, synthwave, emotional music, study music, chill beats"
+  "yt_tags": "synth-pop, melancholic music, city vibes, night drive music, rainy day playlist, 80s inspired, synthwave, emotional music, study music, chill beats",
+  "yt_title": "Neon Rain | Melancholic Synth-Pop for Late Night City Drives"
 }
 ```

@@ -325,6 +325,7 @@ class AQ_Gemini_acstep15:
         "STRING",
         "STRING",
         "STRING",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -342,6 +343,7 @@ class AQ_Gemini_acstep15:
         "headline",
         "yt_description",
         "yt_tags",
+        "yt_title",
         "instruction",
     )
     FUNCTION = "generate"
@@ -354,7 +356,7 @@ class AQ_Gemini_acstep15:
             "- Uses Google Gemini API."
         )
         if not gemini_api_key:
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", "", "", "", "", "", instruction)
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", "", "", "", "", "", "", instruction)
 
         json_schema = {
             "type": "object",
@@ -373,7 +375,8 @@ class AQ_Gemini_acstep15:
                 "tagline",
                 "headline",
                 "yt_description",
-                "yt_tags"
+                "yt_tags",
+                "yt_title"
             ],
             "properties": {
                 "description": {"type": "string"},
@@ -390,7 +393,8 @@ class AQ_Gemini_acstep15:
                 "tagline": {"type": "string", "description": "Catchy subtitle, 5-12 words, for YouTube thumbnail."},
                 "headline": {"type": "string", "description": "Bold thumbnail primary text, 3-8 words, under 30 chars."},
                 "yt_description": {"type": "string", "description": "Full YouTube video description: 2-4 paragraphs covering mood, story, genre, and a lyrics/credits section."},
-                "yt_tags": {"type": "string", "description": "Comma-separated YouTube search tags, 10-20 keywords covering genre, mood, instruments, era, and use-case (e.g. study music, workout)."}
+                "yt_tags": {"type": "string", "description": "Comma-separated YouTube search tags, 10-20 keywords covering genre, mood, instruments, era, and use-case (e.g. study music, workout)."},
+                "yt_title": {"type": "string", "description": "SEO-optimised YouTube video title. Use a keyword-rich format with a pipe or colon separator, e.g. 'Focus Music | Minimalist Ambient Drone for Deep Work' or 'Deep Sleep Music | Gentle Soundscapes for Insomnia Relief'. Include the primary use-case, mood, and one or two distinctive sonic elements. 60-100 characters."}
             }
         }
 
@@ -498,6 +502,7 @@ class AQ_Gemini_acstep15:
             headline = str(json_response.get("headline", ""))
             yt_description = str(json_response.get("yt_description", ""))
             yt_tags = str(json_response.get("yt_tags", ""))
+            yt_title = str(json_response.get("yt_title", ""))
 
             response_json = json.dumps({
                 "description": json_response.get("description", ""),
@@ -514,10 +519,11 @@ class AQ_Gemini_acstep15:
                 "tagline": tagline,
                 "headline": headline,
                 "yt_description": yt_description,
-                "yt_tags": yt_tags
+                "yt_tags": yt_tags,
+                "yt_title": yt_title
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, instruction)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, yt_title, instruction)
         except Exception as e:
             print(f"Error in Gemini API: {str(e)}")
             raise e
@@ -627,6 +633,7 @@ class AQ_OpenAI_acstep15:
         "STRING",
         "STRING",
         "STRING",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -644,6 +651,7 @@ class AQ_OpenAI_acstep15:
         "headline",
         "yt_description",
         "yt_tags",
+        "yt_title",
         "instruction",
     )
     FUNCTION = "generate"
@@ -661,7 +669,7 @@ class AQ_OpenAI_acstep15:
             "- tags/lyrics/bpm/duration/timesignature/language/keyscale/coverImage/title/tagline/headline/yt_description/yt_tags are parsed from JSON."
         )
         if not openai_api_key:
-            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", "", "", "", "", "", instruction)
+            return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", "", "", "", "", "", "", instruction)
 
         schema = {
             "type": "object",
@@ -743,7 +751,8 @@ class AQ_OpenAI_acstep15:
                 "tagline",
                 "headline",
                 "yt_description",
-                "yt_tags"
+                "yt_tags",
+                "yt_title"
             ],
             "additionalProperties": False
         }
@@ -860,6 +869,7 @@ class AQ_OpenAI_acstep15:
             headline = str(json_response.get("headline", ""))
             yt_description = str(json_response.get("yt_description", ""))
             yt_tags = str(json_response.get("yt_tags", ""))
+            yt_title = str(json_response.get("yt_title", ""))
 
             response_json = json.dumps({
                 "tags": tags,
@@ -875,10 +885,11 @@ class AQ_OpenAI_acstep15:
                 "tagline": tagline,
                 "headline": headline,
                 "yt_description": yt_description,
-                "yt_tags": yt_tags
+                "yt_tags": yt_tags,
+                "yt_title": yt_title
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, instruction)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, yt_title, instruction)
         except Exception as e:
             print(f"Error in OpenAI API: {str(e)}")
             raise e
@@ -926,7 +937,7 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
             "- Allows custom API endpoint."
         )
         if not openai_api_key:
-             return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", "", "", "", "", "", instruction)
+             return ("", "", "", seed, 120, 120.0, "4", "en", "C major", "", "", "", "", "", "", "", instruction)
 
         model_name = custom_model if model == "custom" and custom_model else model
 
@@ -975,9 +986,10 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
                 "tagline": {"type": "string", "description": "Catchy subtitle, 5-12 words, for YouTube thumbnail."},
                 "headline": {"type": "string", "description": "Bold thumbnail primary text, 3-8 words, under 30 chars."},
                 "yt_description": {"type": "string", "description": "Full YouTube video description: 2-4 paragraphs covering mood, story, genre, and a lyrics/credits section."},
-                "yt_tags": {"type": "string", "description": "Comma-separated YouTube search tags, 10-20 keywords covering genre, mood, instruments, era, and use-case (e.g. study music, workout)."}
+                "yt_tags": {"type": "string", "description": "Comma-separated YouTube search tags, 10-20 keywords covering genre, mood, instruments, era, and use-case (e.g. study music, workout)."},
+                "yt_title": {"type": "string", "description": "SEO-optimised YouTube video title. Use a keyword-rich format with a pipe or colon separator, e.g. 'Focus Music | Minimalist Ambient Drone for Deep Work' or 'Deep Sleep Music | Gentle Soundscapes for Insomnia Relief'. Include the primary use-case, mood, and one or two distinctive sonic elements. 60-100 characters."}
             },
-            "required": ["tags", "lyrics", "seed", "bpm", "keyscale", "durationSeconds", "timesignature", "language", "coverImage", "title", "tagline", "headline", "yt_description", "yt_tags"],
+            "required": ["tags", "lyrics", "seed", "bpm", "keyscale", "durationSeconds", "timesignature", "language", "coverImage", "title", "tagline", "headline", "yt_description", "yt_tags", "yt_title"],
             "additionalProperties": False
         }
 
@@ -1043,6 +1055,7 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
             headline = str(json_response.get("headline", ""))
             yt_description = str(json_response.get("yt_description", ""))
             yt_tags = str(json_response.get("yt_tags", ""))
+            yt_title = str(json_response.get("yt_title", ""))
 
             response_json = json.dumps({
                 "tags": tags,
@@ -1058,10 +1071,11 @@ class AQ_OpenAI_Compatible_acstep15(AQ_OpenAI_acstep15):
                 "tagline": tagline,
                 "headline": headline,
                 "yt_description": yt_description,
-                "yt_tags": yt_tags
+                "yt_tags": yt_tags,
+                "yt_title": yt_title
             })
 
-            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, instruction)
+            return (response_json, tags, lyrics, seed_value, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, yt_title, instruction)
         except Exception as e:
             print(f"Error in API: {str(e)}")
             raise e
@@ -1091,6 +1105,7 @@ class AQ_Parse_JSON_to_acestep:
         "STRING",
         "STRING",
         "STRING",
+        "STRING",
     )
     RETURN_NAMES = (
         "response_json",
@@ -1108,6 +1123,7 @@ class AQ_Parse_JSON_to_acestep:
         "headline",
         "yt_description",
         "yt_tags",
+        "yt_title",
     )
     FUNCTION = "parse"
     CATEGORY = "Aquasite/LLM"
@@ -1144,8 +1160,9 @@ class AQ_Parse_JSON_to_acestep:
             headline = str(data.get("headline", ""))
             yt_description = str(data.get("yt_description", ""))
             yt_tags = str(data.get("yt_tags", ""))
+            yt_title = str(data.get("yt_title", ""))
 
-            return (json_text, tags, lyrics, seed, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags)
+            return (json_text, tags, lyrics, seed, bpm, duration, timesignature, language, keyscale, coverImage, title, tagline, headline, yt_description, yt_tags, yt_title)
         except Exception as e:
             print(f"Error parsing JSON in AQ_Parse_JSON_to_acestep: {str(e)}")
             raise e

@@ -105,7 +105,7 @@ class AQ_StillImageToVideo:
     # ------------------------------------------------------------------
 
     def _encode(self, encoder_choice, img_path, wav_path, output_path, fps, meta_args):
-        """Run ffmpeg, trying GPU first when encoder is 'auto'."""
+        """Run ffmpeg. Named GPU encoders fall back to CPU on failure."""
 
         _GPU_CODECS = {
             "nvidia (h264_nvenc)": self._nvenc_args,
@@ -119,22 +119,29 @@ class AQ_StillImageToVideo:
             self._run(cmd)
 
         elif encoder_choice in _GPU_CODECS:
-            codec_args = _GPU_CODECS[encoder_choice]()
+            # Try the requested GPU encoder; fall back to CPU on failure
             cmd = self._build_cmd(img_path, wav_path, output_path, fps,
-                                  codec_args, meta_args)
+                                  _GPU_CODECS[encoder_choice](), meta_args)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=6000)
+            if result.returncode == 0:
+                return
+            last_line = result.stderr.splitlines()[-1] if result.stderr else ""
+            print(f"[AQ_StillImageToVideo] {encoder_choice} failed: {last_line}")
+            print("[AQ_StillImageToVideo] Falling back to CPU (libx264 ultrafast)")
+            cmd = self._build_cmd(img_path, wav_path, output_path, fps,
+                                  self._cpu_args(), meta_args)
             self._run(cmd)
 
-        else:  # auto: try GPU codecs in order, fall back to CPU
+        else:  # auto: try all GPU codecs in order, fall back to CPU
             for codec_fn in (self._nvenc_args, self._amf_args, self._qsv_args):
                 cmd = self._build_cmd(img_path, wav_path, output_path, fps,
                                       codec_fn(), meta_args)
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=6000)
                 if result.returncode == 0:
                     return
-                print(f"[AQ_StillImageToVideo] GPU encoder failed, trying next: "
-                      f"{result.stderr.splitlines()[-1] if result.stderr else ''}")
+                last_line = result.stderr.splitlines()[-1] if result.stderr else ""
+                print(f"[AQ_StillImageToVideo] GPU encoder failed, trying next: {last_line}")
 
-            # CPU fallback
             print("[AQ_StillImageToVideo] Falling back to CPU (libx264 ultrafast)")
             cmd = self._build_cmd(img_path, wav_path, output_path, fps,
                                   self._cpu_args(), meta_args)
