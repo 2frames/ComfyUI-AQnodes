@@ -735,6 +735,10 @@ class AQ_OpenAI_acstep15:
                 "yt_tags": {
                     "type": "string",
                     "description": "Comma-separated YouTube search tags, 10-20 keywords covering genre, mood, instruments, era, and use-case (e.g. study music, workout)."
+                },
+                "yt_title": {
+                    "type": "string",
+                    "description": "SEO-optimised YouTube video title, 60-100 characters, using a pipe or colon separator. Lead with the primary use-case or mood, follow with the sonic identity. E.g. 'Focus Music | Minimalist Ambient Drone for Deep Work' or 'Deep Sleep Music | Gentle Soundscapes for Insomnia Relief'."
                 }
             },
             "required": [
