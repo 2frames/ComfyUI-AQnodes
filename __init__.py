@@ -10,6 +10,7 @@ from .nodes.api.AQ_Gemini import (
     AQ_Parse_JSON_to_acestep
 )
 from .nodes.api.AQ_SendImageToAPI import AQ_SendImageToAPI
+from .nodes.api.AQ_Cover import AQ_CoverPrompt
 
 from .nodes.clip.AQ_CLIPSetLastLayer import AQ_CLIPSetLastLayer
 from .nodes.numbers.AQ_Numbers import AQ_Increment, AQ_Random
@@ -43,7 +44,8 @@ NODE_CLASS_MAPPINGS = {
     "AQ_BatchAverageImage": AQ_BatchAverageImage,
     "AQ_ColorMatchImage": AQ_ColorMatchImage,
     "AQ_TextEncodeQwenImageEdit": AQ_TextEncodeQwenImageEdit,
-    "AQ_TextEncodeQwenImageEditPlus": AQ_TextEncodeQwenImageEditPlus
+    "AQ_TextEncodeQwenImageEditPlus": AQ_TextEncodeQwenImageEditPlus,
+    "AQ_CoverPrompt": AQ_CoverPrompt,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -69,8 +71,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AQ_BatchAverageImage": "AQ_BatchAverageImage",
     "AQ_ColorMatchImage": "AQ_ColorMatchImage",
     "AQ_TextEncodeQwenImageEdit": "AQ_TextEncodeQwenImageEdit",
-    "AQ_TextEncodeQwenImageEditPlus": "AQ_TextEncodeQwenImageEditPlus"
-
+    "AQ_TextEncodeQwenImageEditPlus": "AQ_TextEncodeQwenImageEditPlus",
+    "AQ_CoverPrompt": "AQ_CoverPrompt",
 }
 
 
