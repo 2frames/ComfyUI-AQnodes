@@ -147,6 +147,9 @@ class AQ_YouTubeUpload:
         if not os.path.isfile(video_path):
             raise FileNotFoundError(f"Video file not found: {video_path}")
 
+        # Unescape literal \n sequences produced by LLMs
+        description = description.replace("\\n", "\n")
+
         if not description.strip():
             parts = []
             if tagline:
